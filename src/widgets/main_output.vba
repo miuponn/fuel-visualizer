@@ -1,206 +1,106 @@
-Sub CreateFuelSheet()
+Sub CreateTableSheet()
 
-'Declare variables
-Dim ws As Worksheet, ps As Worksheet, data As Worksheet
-Dim DateCell As String, DateYear As String, DateMonth As String
-
-Set ps = Sheets("Monthly Output By Fuel")
-Set data = Sheets("Data")
-DateCell = data.Range("A3")
-DateYear = Right(DateCell, 4)
-
-On Error Resume Next
-Set ws = Worksheets(DateYear & " Output By Fuel Type")
-If Err.Number = 9 Then
-    Set ws = Worksheets.Add(Before:=Sheets("Monthly Output"))
-    ws.name = DateYear & " Output By Fuel Type"
-End If
-
-ws.Tab.ColorIndex = 34
-
-With ws
-.Columns("A:A").ColumnWidth = 32
-.Columns("B:B").ColumnWidth = 16
-.Columns("N:N").ColumnWidth = 11
-.Range("A1").Value = "Fuel Type"
-.Range("B1").Value = "Jan" & DateYear
-.Range("C1").Value = "Feb" & DateYear
-.Range("D1").Value = "Mar" & DateYear
-.Range("E1").Value = "Apr" & DateYear
-.Range("F1").Value = "May" & DateYear
-.Range("G1").Value = "Jun" & DateYear
-.Range("H1").Value = "Jul" & DateYear
-.Range("I1").Value = "Aug" & DateYear
-.Range("J1").Value = "Sep" & DateYear
-.Range("K1").Value = "Oct" & DateYear
-.Range("L1").Value = "Nov" & DateYear
-.Range("M1").Value = "Dec" & DateYear
-.Range("N1").Value = "Annual Sum"
-Range("A1:N1").Font.Bold = True
-End With
-
-'Find column of month
-data.Cells(5, 1).Copy Destination:=ws.Cells(1, 15)
-ws.Range("B1:M1").NumberFormat = "General"
-ws.Cells(1, 15).NumberFormat = "General"
-DateMonth = ws.Cells(1, 15).Value
-
-Dim rng1 As Range
-With ws.Rows(1)
-    Set rng1 = .Find(What:=DateMonth)
-End With
-
-ws.Range("B1:M1").NumberFormat = "mmm-yy;@"
-ws.Cells(1, 15).Clear
-
-'Copy and paste fuel list
-Dim rng2 As Range, rng3 As Range
-
-Set rng2 = ps.PivotTables(1).PivotFields("Fuel Type").DataRange
-Set rng3 = ws.Range("A" & ws.Rows.Count).End(xlUp).Offset(1, 0) 'Paste range starting from A2 and then first empty cell
-
-rng2.Copy Destination:=rng3 'Copy/Paste
-ws.Columns(1).Select
-Selection.Interior.ColorIndex = xlNone
-
-'Remove duplicates & "output" row
-Dim rng4 As Range
-
-Set rng4 = ws.Range("A2:A" & Cells(Rows.Count, 1).End(xlUp).Row)
-ws.Columns(1).RemoveDuplicates (1)
-
-rng4.Font.Bold = False
-
-For Each Cell In rng4
-    If Cell.Value = "Output" Then
-        Cell.EntireRow.Delete
-    End If
-Next
-
-'Fill table with 0 MW
-Dim tbl As Range
-
-Set tbl = ws.Range("B2:N" & Cells(Rows.Count, 1).End(xlUp).Row)
-
-For Each Cell In tbl
-    If IsEmpty(Cell) = True Then
-        Cell.Value = "0"
-    End If
-Next
-ws.Rows((ws.Range("a" & ws.Rows.Count).End(xlUp).Offset(1, 0).Row) & ":" & ws.Rows.Count).Delete
-
-'Find and set fuels' MW
-Dim fuel As String, mw As String, fuel2 As Range
-
-For Each Cell In rng4
-    fuel = Cell.Text
-    mw = ps.Cells.Find(fuel).Offset(0, 1).Value
-    Cell.Offset(0, rng1.Column - 1).Select
-    Selection.Value = mw
-Next
-
-'Calculate Annual Sum
-Dim r As Range
-Set r = ws.Range("B2:M" & Range("B" & Rows.Count).End(xlUp).Row)
-Dim Total As Range: Set Total = r.Offset(, 12).Resize(r.Rows.Count, 1)
-
-With Total
-    .FormulaR1C1 = "=SUM(RC[-12]:RC[-1])"
-    .Value = .Value
-End With
-
-ws.Range("N2:N" & Cells(Rows.Count, 1).End(xlUp).Row).NumberFormat = "General"
-
-'Format numbers
-ws.Range("C2:O" & Range("C" & Rows.Count).End(xlUp).Row).NumberFormat = "#,##0"
-
-'Zoom window to 80%
-ActiveWindow.Zoom = 80
-
-'Format numbers
-ws.Range("B2:N" & Range("C" & Rows.Count).End(xlUp).Row).NumberFormat = "#,##0"
-
-'Bold annual sum column
-ws.Columns(14).Font.Bold = True
-
-'Shade every other gen
-Dim Counter As Integer
-    ws.Range("A2:O" & Cells(Rows.Count, 1).End(xlUp).Row).Select
-   'For every row in the current selection...
-    For Counter = 1 To Selection.Rows.Count
-        'If the row is an odd number (within the selection)...
-        If Counter Mod 2 = 1 Then
-            'Shade rows
-            Selection.Rows(Counter).Interior.Color = RGB(222, 235, 247)
-        End If
-    Next
-    
-'Get rid of previous borders
-ws.Cells.Select
-    Selection.Borders(xlDiagonalDown).LineStyle = xlNone
-    Selection.Borders(xlDiagonalUp).LineStyle = xlNone
-    Selection.Borders(xlEdgeLeft).LineStyle = xlNone
-    Selection.Borders(xlEdgeTop).LineStyle = xlNone
-    Selection.Borders(xlEdgeBottom).LineStyle = xlNone
-    Selection.Borders(xlEdgeRight).LineStyle = xlNone
-    Selection.Borders(xlInsideVertical).LineStyle = xlNone
-    Selection.Borders(xlInsideHorizontal).LineStyle = xlNone
-
-'Add borders to every gen
-ws.Range("A2:O" & Cells(Rows.Count, 1).End(xlUp).Row).Select
-    'For every row in the current selection...
-    For Counter = 1 To Selection.Rows.Count
-        Selection.Rows(Counter).Borders.LineStyle = xlContinuous
-        Selection.Rows(Counter).Borders(xlInsideVertical).LineStyle = xlNone
-        Selection.Rows(Counter).Borders.LineStyle = xlContinuous
-        Selection.Rows(Counter).Borders(xlEdgeRight).LineStyle = xlNone
-    Next
-        
-'Freeze top row
-ActiveWindow.FreezePanes = False
-Application.ScreenUpdating = False
-
-Rows("2:2").Select
-ActiveWindow.FreezePanes = True
-
-ActiveWindow.FreezePanes = True
-
-ws.Columns(16).EntireColumn.Delete
-ws.Columns(15).EntireColumn.Delete
-
-'Create Stacked Chart
-Dim rng5 As Range
-Dim MyChart As Chart
-
-'Delete chart if existing
-On Error Resume Next
-Application.DisplayAlerts = False
-    Sheets(DateYear & " Output By Fuel Type Chart").Delete
-Application.DisplayAlerts = True
-
-Set MyChart = Charts.Add
-'Set rng5 = ws.Range("A1:N" & Cells(Rows.Count, 1).End(xlUp).Row)
-
-ActiveChart.name = DateYear & " Output By Fuel Type Chart"
-
-With MyChart
-    .SetSourceData ws.UsedRange
-    .ChartType = xlColumnStacked
-    .HasTitle = True
-    .ChartTitle.Text = DateYear & " Monthly Output By Fuel Type"
-    .HasLegend = True
-    .SeriesCollection(1).Interior.Color = RGB(112, 173, 71) 'green biofuel
-    .SeriesCollection(2).Interior.Color = RGB(165, 165, 165) 'grey gas
-    .SeriesCollection(3).Interior.Color = RGB(91, 155, 213) 'blue hydro
-    .SeriesCollection(4).Interior.Color = RGB(0, 43, 130) 'indigo nuclear
-    .SeriesCollection(5).Interior.Color = RGB(255, 192, 0) 'yellow solar
-    .SeriesCollection(6).Interior.Color = RGB(222, 235, 247) 'light blue wind
-    .Axes(xlValue, xlPrimary).HasTitle = True
-    .Axes(xlValue, xlPrimary).AxisTitle.Characters.Text = "Monthly Output (MWh)"
-End With
-
-Sheets(DateYear & " Output By Fuel Type Chart").Tab.ColorIndex = 24
-Sheets(DateYear & " Output By Fuel Type Chart").Move After:=ws
-ws.Cells(1, 16).Value = "Output values displayed in MWh"
+Sheets("Data").Copy Before:=Sheets(Sheets.Count)
+ActiveSheet.name = "Table"
+Worksheets("Table").Rows("1:3").Delete
 
 End Sub
+Sub InsertMonthlyOutput()
+
+'Declare Variables
+Dim PSheet As Worksheet, DSheet As Worksheet
+Dim PCache As PivotCache, PTable As PivotTable, PRange As Range
+Dim lastRow As Long, LastCol As Long
+
+'Add New Worksheet
+On Error Resume Next
+Application.DisplayAlerts = False
+Worksheets("Monthly Output").Delete
+Sheets.Add Before:=ActiveSheet
+ActiveSheet.name = "Monthly Output"
+Application.DisplayAlerts = True
+Set PSheet = Worksheets("Monthly Output")
+Set DSheet = Worksheets("Table")
+
+'Define Data Range
+lastRow = DSheet.Cells(Rows.Count, 1).End(xlUp).Row
+LastCol = DSheet.Cells(1, Columns.Count).End(xlToLeft).Column
+Set PRange = DSheet.Cells(1, 1).Resize(lastRow, LastCol)
+
+'Define Pivot Cache
+Set PCache = ActiveWorkbook.PivotCaches.Create _
+(SourceType:=xlDatabase, SourceData:=PRange). _
+CreatePivotTable(TableDestination:=PSheet.Cells(1, 1), _
+TableName:="MonthlyPivotTable")
+
+'Insert Blank Pivot Table
+Set PTable = PCache.CreatePivotTable _
+(TableDestination:=PSheet.Cells(1, 1), TableName:="MonthlyPivotTable")
+
+'Insert Row Fields
+With ActiveSheet.PivotTables("MonthlyPivotTable").PivotFields("Generator")
+.Orientation = xlRowField
+.Position = 1
+End With
+
+'Insert Calculated Field
+With ActiveSheet.PivotTables("MonthlyPivotTable")
+    .CalculatedFields.Add "MW", "='Hour 1'+'Hour 2'+'Hour 3'+'Hour 4'+'Hour 5'+'Hour 6'+'Hour 7'+'Hour 8'+'Hour 9'+'Hour 10'+'Hour 11'+'Hour 12'+'Hour 13'+'Hour 14'+'Hour 15'+'Hour 16'+'Hour 17'+'Hour 18'+'Hour 19'+'Hour 20'+'Hour 21'+'Hour 22'+'Hour 23'+'Hour 24'"
+    .PivotFields("MW").Orientation = xlDataField
+    .Position = 1
+    .NumberFormat = "#,##0"""
+End With
+
+ActiveSheet.PivotTables("MonthlyPivotTable").RowGrand = False
+ActiveSheet.PivotTables("MonthlyPivotTable").ColumnGrand = False
+
+'Format Pivot Table
+ActiveSheet.PivotTables("MonthlyPivotTable").ShowTableStyleRowStripes = True
+ActiveSheet.PivotTables("MonthlyPivotTable").TableStyle2 = "PivotStyleLight6"
+
+End Sub
+Sub AddSlicer()
+
+'Declare Variables
+Dim ws As Worksheet
+Dim wb As Workbook
+Dim pt As PivotTable
+Dim SLCache As SlicerCache
+Dim SL As Slicer
+
+Set wb = ActiveWorkbook
+Set ws = Worksheets("Monthly Output")
+Set pt = ws.PivotTables("MonthlyPivotTable")
+
+'Create Slicer Cache
+Set SLCache = wb.SlicerCaches.Add2(pt, "Measurement", "MeasurementSlicerCache", XlSlicerCacheType.xlSlicer)
+
+'Create Slicer
+Set SL = SLCache.Slicers.Add(ws, , "MeasurementSlicer", "Select a Measurement")
+
+'Define which values are not selected in the Slicer
+On Error Resume Next
+SLCache.SlicerItems("Available Capacity").Selected = False
+SLCache.SlicerItems("Capability").Selected = False
+SLCache.SlicerItems("Forecast").Selected = False
+
+
+End Sub
+Sub DeleteTableSheet()
+
+Application.DisplayAlerts = False 'switching off the alert button
+Sheets("Table").Delete
+Application.DisplayAlerts = True 'switching on the alert button
+
+End Sub
+
+Sub RunMonthlyReport()
+
+'Run all macros with a call statement
+Call CreateTableSheet
+Call InsertMonthlyOutput
+Call AddSlicer
+Call DeleteTableSheet
+
+End Sub
+
