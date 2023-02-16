@@ -1,2 +1,2 @@
 # fuel-visualizer
-For interactive dashboard
+For interactive dashboard in MS Excel
