@@ -1,2 +1,2 @@
 # fuel-visualizer
-For interactive dashboard in MS Excel
+For GOP interactive dashboard compatible for Excel
